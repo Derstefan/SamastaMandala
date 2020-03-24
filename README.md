@@ -5,9 +5,9 @@ Cellular Automaton with random symmetric rules and random Colors with pixi.js gr
 A rule is a mapping
 [1][2][3][4][5][6][7][8] -> {random color} 
 
-as[1][2][3]asdw
-a[8][X][4]s
-wd[7][6][5]asdwasd
+[1][2][3]                                                                                  -
+[8][X][4]                                                                                  -
+[7][6][5]                                                                                  -
 
 So there are 2^8 different values. To make it beautiful I added some symmetric attributes.
 
