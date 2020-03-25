@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html>
 
 <head>
@@ -10,7 +10,7 @@
 
 <div align="center" id="body2">
 <div>
- <font color="White">Seed </font> <input type="text" value ="232" id="rule"><button onclick="randomRule()">Random Rule</button><button onclick="randomColor()">Random Color</button><button onclick="save()">save Image</button>
+ <font color="White">Seed </font> <input type="text" value ="232" id="rule"><button onclick="randomRule()">Random Rule</button><button onclick="randomColor()">Random Color</button><button onclick="save()">save Image</button><button onclick="golly()">golly code</button>
 </div>
 <div id="slidecontainer">
   <input type="range" min="1" max="200" value="27" class="slider" id="stepSilder">
@@ -211,6 +211,66 @@ var image = app.renderer.plugins.extract.image(app.stage);
   }	
 }
 
+function golly() {
+    var str = "@RULE SamastaMandala_" + ruleNumber + "\n";
+
+    str += "\n@TABLE\nn_states:9\nneighborhood:Moore\nsymmetries:none\n"
+    //golly format:
+    //c,n,ne,e,se,s,sw,w,nw : c'
+    //Stefan format:
+    //[1][2][3]
+    //[8][X][4]
+    //[7][6][5]
+
+    for (let i = 1; i < 9; i++) {
+        str += "var " + i + "a = { 1, 2, 3, 4, 5, 6, 7, 8}\n";
+    }
+    str += "\nvar any = {0, 1, 2, 3, 4, 5, 6, 7, 8}\n\n\n"
+    for (let i = 0; i < 256; i++) {
+        str += "any, ";
+        for (let j = 1; j < 9; j++) {
+            let b = (i >>> j - 1)%2;//Number(( bin.charAt(j - 1)));
+            if (b) { str += j + "a, "}
+            else { str += "0, ";}
+        }
+        let sum = (i >>> 0).toString(2).split("1").length - 1;
+        if (sum == 0) { str += "0\n" }
+        else { str += rulesC[sum - 1] + "\n"; }
+    }
+
+
+
+    str += "\n@COLORS\n\n";
+    str += "0 128 128 128 \n"
+    for (let i = 0; i < 8; i++) {
+        r = Math.floor(colors[i] / 65536);
+        g = Math.floor(colors[i] / 256) % 256;
+        b = colors[i] % 256;
+        str += i + ' ' + r + ' ' + g + ' '+ b + "\n";
+    }
+
+    for (let i = 0; i < 3; i++) {
+        scale = 0;
+        if (i == 0) scale = 7;
+        else if (i == 1) scale = 15;
+        else scale = 31;
+        str += "\n@ICONS\n"
+        str += "\nXPM\n"
+        str += '"' + scale + ' ' + scale + ' 1 1"\n\n'
+        str += '"X c #FFFFFF"\n\n\n'
+
+        for (let j = 0; j < scale; j++) {
+            str += '"';
+            for (let k = 0; k < scale; k++) {
+                str += "X";
+            }
+            str += '"\n';
+        }
+    }
+
+    uriContent = "data:," + encodeURIComponent(str);
+    newWindow = window.open(uriContent, 'asdwdasd');
+}
 
 
 
@@ -232,7 +292,7 @@ function randomColor(){
 
 function setRandomColor(){
 
-for(var i=1;i<colors.length;i++){
+for(var i=1;i< colors.length;i++){
 	colors[i]=Math.floor(Math.random() * 16777216);
 	rulesC[i]=rules[i]*i;
 	}
