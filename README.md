@@ -10,7 +10,12 @@ Just download this Repository in your Folder and open samasta.html in your Brows
 
 
 Each mandala starts with one Point in the middle and this evolves iterativly.
-
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b1.png)
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b2.png)
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b3.png)
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b4.png)
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b5.png)
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b6.png)
 
 A rule is a mapping:
 
