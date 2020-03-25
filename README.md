@@ -32,4 +32,4 @@ So there are 2^8 different values. To make it beautiful I added some symmetric a
 
 
 
-Let me know about your magic!
+Let me know about your expansion-magic!
