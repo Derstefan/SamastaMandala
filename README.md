@@ -16,6 +16,9 @@ Each mandala starts with one Point in the middle and this evolves iterativly.
 ![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b4.png)
 ![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b5.png)
 ![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b6.png)
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b7.png)
+...
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/b8.png)
 
 A rule is a mapping:
 
