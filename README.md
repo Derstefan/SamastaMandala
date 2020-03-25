@@ -6,7 +6,7 @@ Just download this Repository in your Folder and open samasta.html in your Brows
 ![alt text](https://github.com/Derstefan/SamastaMandala/blob/master/lala.jpg)
 
 
-![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/samasta3.jpg)
+
 
 
 Each mandala starts with one Point in the middle and this evolves iterativly.
@@ -30,6 +30,6 @@ A rule is a mapping:
 
 So there are 2^8 different values. To make it beautiful I added some symmetric attributes.
 
-
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/samasta3.jpg)
 
 Let me know about your expansion-magic!
