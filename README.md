@@ -3,11 +3,11 @@
 Cellular Automaton with random symmetric rules and random Colors with pixi.js graphics
 
 A rule is a mapping
-[1][2][3][4][5][6][7][8] -> {random color} 
+
 
 ```
 [1][2][3]
-[8][X][4]
+[8][X][4]         [1][2][3][4][5][6][7][8] -> {random color} 
 [7][6][5] 
 ```
 
