@@ -229,7 +229,7 @@ function golly() {
     for (let i = 0; i < 256; i++) {
         str += "any, ";
         for (let j = 1; j < 9; j++) {
-            let b = (i >>> j - 1)%2;//Number(( bin.charAt(j - 1)));
+            let b = (i >>> j - 1)%2;
             if (b) { str += j + "a, "}
             else { str += "0, ";}
         }
@@ -249,12 +249,14 @@ function golly() {
         str += i + ' ' + r + ' ' + g + ' '+ b + "\n";
     }
 
+    str += "\n@ICONS\n"
+
     for (let i = 0; i < 3; i++) {
         scale = 0;
         if (i == 0) scale = 7;
         else if (i == 1) scale = 15;
         else scale = 31;
-        str += "\n@ICONS\n"
+        
         str += "\nXPM\n"
         str += '"' + scale + ' ' + scale + ' 1 1"\n\n'
         str += '"X c #FFFFFF"\n\n\n'
