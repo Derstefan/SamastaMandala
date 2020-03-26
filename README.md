@@ -1,5 +1,7 @@
 # SamastaMandala
 
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/samasta3.jpg)
+
 Cellular Automaton with random symmetric rules and random Colors with pixi.js graphics
 Just download this Repository in your Folder and open samasta.html in your Browser.
 
@@ -30,6 +32,5 @@ A rule is a mapping:
 
 So there are 2^8 different values. To make it beautiful I added some symmetric attributes.
 
-![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/samasta3.jpg)
 
 Let me know about your expansion-magic!
