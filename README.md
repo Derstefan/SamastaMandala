@@ -1,9 +1,11 @@
 # SamastaMandala
 
-![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/samasta3.jpg)
 
 Cellular Automaton with random symmetric rules and random Colors with pixi.js graphics
 Just download this Repository in your Folder and open samasta.html in your Browser.
+
+
+![alt text](https://raw.githubusercontent.com/Derstefan/SamastaMandala/master/samasta3.jpg)
 
 ![alt text](https://github.com/Derstefan/SamastaMandala/blob/master/lala.jpg)
 
