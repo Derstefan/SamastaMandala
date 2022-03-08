@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>WebGL Game of Life</title>
+    <style>
+        body {
+            background-color: lightblue;
+            -webkit-user-select: none;
+            /* turning off text selection  / Webkit */
+            -moz-user-select: none;
+            /* Firefox */
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #tools {
+            padding: 15px;
+            margin-right: 30px;
+            border: thick solid black;
+            border-radius: 16px;
+            background-color: white;
+        }
+
+        #tools p {
+            margin-bottom: 30px;
+        }
+    </style>
+
+    <!-----------------------------------------------------------------------------------
+   This page uses two WebGL shader programs.  One is used for drawing the initial
+   convigeration, and the other is used for drawing the next generation based on
+   the current generation.  (The image for the current generation is copied to
+   a texture for use in computing the next generation.)
+
+   The vertex shader for both programs come from the script with id=vshader.
+   It simply sends the input coordinates to the fragment shader, after converting
+   from the range 0 to 1 to the clip coordinate range -1 to 1.
+   
+   The fragment shader for drawing the initial board come from the script
+   with id="fshader-create".  The output color can be white, or it can be
+   computed using Perlin noise, or it can be taken from a texture, depending
+   on the value of the uniform int named fill.  In any case, the output color
+   will be either black or white.  (Perlin noise is to produce random-looking
+   patterns.)
+   
+   The fragment shader for computing the next generation comes from the
+   script with id="fshader-nextgen.  It computes the next generation value
+   for one cell, taking data for the current generatin from a texture.
+   It uses 9 texture lookups to find the state of the cell and of its eight
+   neighbors.  Since the texture uses the REPEAT wrap mode, cells along an
+   edge of the board will use values from the opposite edge.
+-->
+
+    <script type="x-shader/x-vertex" id="vshader">
+    attribute vec2 a_coords;  // coordinates on square, ranging from 0 to 1
+    varying vec2 v_coords;
+    void main() {
+        gl_Position = vec4( 2.0*a_coords - 1.0, 0, 1 ); 
+        v_coords = a_coords;
+    }
+</script>
+
+    <script type="x-shader/x-fragment" id="fshader-create">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+       precision highp float;
+    #else
+       precision mediump float;
+    #endif
+    varying vec2 v_coords;
+    uniform int fill;
+    uniform sampler2D texture;
+    
+    void main() {
+         if (fill == 0) {
+            gl_FragColor = vec4(1);
+         }
+         else {  // use texture; only for the puffer example
+             gl_FragColor = texture2D(texture, v_coords);
+         }
+    }
+</script>
+
+    <script type="x-shader/x-fragment" id="fshader-nextgen">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+       precision highp float;
+    #else
+       precision mediump float;
+    #endif
+    varying vec2 v_coords;     // texture coordinates for this cell
+    //          cells, in texture coords)
+    uniform sampler2D source;  // the texture holding the previous generation
+    uniform float scale;// 1.0 / canvas_size; (offset between 
+
+
+    void main() {
+        int alive;  // is this cell alive ?
+        if (texture2D(source,v_coords).r > 0.0)
+           alive = 1;
+        else
+           alive = 0;
+           
+        // Count the living neighbors.  To check for living, just test
+        // the red component of the color, which will be 1.0 for a
+        // living cell and 0.0. for a dead cell.
+           
+        int neighbors = 0; // will be the number of neighbors that are alive
+        
+        if (texture2D(source,v_coords+vec2(scale,scale)).r > 0.0)
+           neighbors += 1;
+        if (texture2D(source,v_coords+vec2(scale,0)).r > 0.0)
+           neighbors += 1;
+        if (texture2D(source,v_coords+vec2(scale,-scale)).r > 0.0)
+           neighbors += 1;
+           
+        if (texture2D(source,v_coords+vec2(0,scale)).r > 0.0)
+           neighbors += 1;
+        if (texture2D(source,v_coords+vec2(0,-scale)).r > 0.0)
+           neighbors += 1;
+           
+        if (texture2D(source,v_coords+vec2(-scale,scale)).r > 0.0)
+           neighbors += 1;
+        if (texture2D(source,v_coords+vec2(-scale,0)).r > 0.0)
+           neighbors += 1;
+        if (texture2D(source,v_coords+vec2(-scale,-scale)).r > 0.0)
+           neighbors += 1;
+        
+        // Output the new color for this cell.
+           
+        float color = 0.0; // color for dead cell
+       // if (scaling == 1) {
+            if (neighbors == 1 || neighbors == 2)
+               color = 1.0; // color for living cell
+        //}
+        else if ( neighbors == 3 )
+            color = 1.0; // color for living cell
+            
+        gl_FragColor = vec4(color, color, color, 1);
+    }
+</script>
+
+    <!-- --------------------- End of shader programs ----------------------- -->
+
+    <script>
+
+        "use strict";
+
+        var canvas;  // Canvas used for WebGL drawing. (Must be 1024-by-1024 pixels for this program!
+
+        var gl;      // WebGL drawing context.
+
+        var createWorldProg;  // An object holding the shader program for creating a board, and locations of its variables.
+
+        var nextgenProg;  // This is an object that holds the shader program for computing the next generation, and the locations of its variables.
+
+        var texture;  // The texture that will contain the life board from the previous generation.
+
+
+        var generation;  // Generations since world was created.
+
+        var square;  // An object; call square.render(a_coords_loc) to draw the square with vertices at (0,0) and (1,1),
+        //             where a_coords_loc is the location of attribute vec2 a_coords in the vertex shader.
+        var coordsBuffer;  // Buffer for coordinates of other primitives.
+
+        var pufferTexture;  // A texture to hold the "Puffer" initial configuration
+
+        const SCALING = 4;
+
+        const SIZE = 1024;
+
+
+        //---------------------------------------------------------------------------------------------------------------------
+        // The next two methods are the heart of computing the next generation of the game of life.
+        // The first one creates the shader program that is used and the texture that holds
+        // the current board, and the second function actually computes the board for the next generation.
+
+
+        /**
+         *  Creates and configures a texture object for the texture that will hold the
+         *  current board while the next generation is being computed.  Then creates
+         *  the shader program that will do the computation.
+         */
+        function createNextGenShaderAndTexture() {
+            gl.activeTexture(gl.TEXTURE1);
+            texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+            nextgenProg = {};
+            nextgenProg.prog = createProgram(gl, "vshader", "fshader-nextgen");
+            nextgenProg.a_coords_loc = gl.getAttribLocation(nextgenProg.prog, "a_coords");
+            nextgenProg.source_loc = gl.getUniformLocation(nextgenProg.prog, "source");
+            nextgenProg.scale_loc = gl.getUniformLocation(nextgenProg.prog, "scale");
+        }
+
+        /**
+         *    Compute the next generation of the game of life by copying the current board into
+         *  a texture, and then rendering a square that covers the board while using a shader 
+         *  program in which the fragment shader computes the state of each pixel in the next
+         *  generation.
+         */
+        function computeOneGeneration() {
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGB, 0, 0, SIZE + SCALING, SIZE + SCALING, 0);  // copy board into texture.
+            gl.useProgram(nextgenProg.prog);
+            gl.uniform1i(nextgenProg.source_loc, 1);
+            gl.uniform1f(nextgenProg.scale_loc, SCALING / SIZE);
+            gl.enableVertexAttribArray(nextgenProg.a_cords_loc);
+            square.render();
+            gl.disableVertexAttribArray(nextgenProg.a_cords_loc);
+        }
+
+        //---------------------------------------------------------------------------------------------------------------------
+
+
+
+        /* Creates an initial configuration for the game of Life.  Several configurations are
+         * possible, depending on the setup of a pop-up menu.  Two configurations use random
+         * fill, while three draw white line segments.  One configureation is a well-known
+         * example: the "Puffer" that moves right-to-left generating a sequence of "glider guns";
+         * each glider gun emits a sequence of "gliders".  (The puffer requires loading a
+         * texture and is not available if the attempt to load the texture fails.)
+         */
+        function createInitialConfiguration() {
+            gl.useProgram(createWorldProg.prog);
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            if (document.getElementById("randomSeedCheckbox").checked) {
+                gl.uniform2f(createWorldProg.noise_seed_loc, Math.random(), Math.random());
+            }
+            else {
+                gl.uniform2f(createWorldProg.noise_seed_loc, 0, 0);
+            }
+            gl.uniform1f(createWorldProg.noise_scale_loc, 200.0);
+            var configType = Number(document.getElementById("configType").value);
+            if (configType == 0) {  // Point
+                gl.uniform1i(createWorldProg.fill_loc, 0);
+                var s = 1.0 / canvas.width * SCALING;
+                drawPolygon([0.5, 0.5, 0.5 + s, 0.5, 0.5 + s, 0.5 + s, 0.5, 0.5 + s]);
+            }
+            if (configType == 1) {  // Point
+                gl.uniform1i(createWorldProg.fill_loc, 0);
+                var s = 1.0 / canvas.width;
+                drawPolygon([0.5, 0.5, 0.5 + s, 0.5, 0.5 + s, 0.5 + s, 0.5, 0.5 + s]);
+                drawPolygon([0.5 - s, 0.5, 0.5, 0.5, 0.5, 0.5 + s, 0.5 - s, 0.5 + s]);
+                drawPolygon([0.5 + s, 0.5, 0.5 + 2 * s, 0.5, 0.5 + 2 * s, 0.5 + s, 0.5 + s, 0.5 + s]);
+                drawPolygon([0.5, 0.5 - s, 0.5 + s, 0.5 - s, 0.5 + s, 0.5, 0.5, 0.5]);
+                drawPolygon([0.5, 0.5 + s, 0.5 + s, 0.5 + s, 0.5 + s, 0.5 + 2 * s, 0.5, 0.5 + 2 * s]);
+            }
+            else if (configType == 2) {  // Fill a square patch in the center of the canvas with random values.
+                gl.uniform1i(createWorldProg.fill_loc, 0); // tell shader to use Perlin noise
+                drawPolygon([0.25, 0.25, 0.75, 0.25, 0.75, 0.75, 0.25, 0.75]);
+            }
+            else if (configType == 3) {  // Draw a solid line across the center of the canvas.
+                gl.uniform1i(createWorldProg.fill_loc, 0); // tell shader to fill with white
+                var s = 1.0 / canvas.width;
+                drawPolygon([0.1, 0.5, 0.9, 0.5, 0.9, 0.5 + s, 0.1, 0.5 + s]);
+            }
+            else if (configType == 4) {  // Draw a dashed line, alternating 5 white pixels with one black.
+                gl.uniform1i(createWorldProg.fill_loc, 0);  // tell shader to fill with white
+                var s = 1.0 / canvas.width;
+                var count = Math.floor((canvas.width - 11) / 6);
+                var x = (canvas.width - 6 * count) / 2;
+                for (var i = 0; i < count; i++) {
+                    drawPolygon([x * s, 0.5, (x + 5) * s, 0.5, (x + 5) * s, 0.5 + s, x * s, 0.5 + s]);
+                    x += 6;
+                }
+            }
+            else if (configType == 5) {  // Draw the outline of a square by drawing its four sides.
+                gl.uniform1i(createWorldProg.fill_loc, 0); // tell shader to fill with white
+                var s = 1.0 / canvas.width;
+                drawPolygon([0.25, 0.25, 0.75, 0.25, 0.75, 0.25 + s, 0.25, 0.25 + s]);
+                drawPolygon([0.25, 0.75, 0.75, 0.75, 0.75, 0.75 - s, 0.25, 0.75 - s]);
+                drawPolygon([0.25, 0.25, 0.25, 0.75, 0.25 + s, 0.75, 0.25 + s, 0.25]);
+                drawPolygon([0.75, 0.25, 0.75, 0.75, 0.75 - s, 0.75, 0.75 - s, 0.25]);
+            }
+            else if (configType == 6) { // Draw the "puffer" texture -- only happens if the puffer loads.
+                gl.uniform1i(createWorldProg.fill_loc, 0);  // tell shader to use texture fill
+                gl.uniform1i(createWorldProg.texture_loc, 3);  //puffer texture is bound to texture unit 3
+                square.render(createWorldProg.a_coords_loc);
+            }
+            generation = 1;
+            document.getElementById("gen").innerHTML = "1";
+            animating = false;
+            document.getElementById("animateCheckbox").checked = false;
+            document.getElementById("nextButton").disabled = false;
+            function drawPolygon(coords) { // draw a triangle fan using specified coordinates
+                gl.bindBuffer(gl.ARRAY_BUFFER, coordsBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STREAM_DRAW);
+                gl.enableVertexAttribArray(createWorldProg.a_coords_loc);
+                gl.vertexAttribPointer(createWorldProg.a_coords_loc, 2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+                gl.disableVertexAttribArray(createWorldProg.a_coords_loc);
+            }
+        } // end createInitialConfiguration
+
+
+
+        /**
+         * Initialize the WebGL graphics context and data for shader programs.
+         */
+        function initGL() {
+
+            // Create the shader program that makes new initial configurations for Life.
+            createWorldProg = {};
+            createWorldProg.prog = createProgram(gl, "vshader", "fshader-create");
+            createWorldProg.a_coords_loc = gl.getAttribLocation(createWorldProg.prog, "a_coords");
+            createWorldProg.fill_loc = gl.getUniformLocation(createWorldProg.prog, "fill");
+            createWorldProg.noise_seed_loc = gl.getUniformLocation(createWorldProg.prog, "noise_seed");
+            createWorldProg.noise_scale_loc = gl.getUniformLocation(createWorldProg.prog, "noise_scale");
+            createWorldProg.texture_loc = gl.getUniformLocation(createWorldProg.prog, "texture");
+
+            coordsBuffer = gl.createBuffer();  // This buffer is used in drawPolygon(), inside createInitialConfiguration.
+
+            square = {  // This object draws a square, using its own buffer, when square.render() is called
+                buffer: gl.createBuffer(),
+                render: function (a_coords_loc) {  // square.render(a_coords_loc) will draw the square.
+                    // a_coords_loc should be the location of an a_coords attribute variable of type vec2
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+                    gl.vertexAttribPointer(a_coords_loc, 2, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(a_coords_loc);
+                    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
+                    gl.disableVertexAttribArray(a_coords_loc);
+                }
+            };
+            var squareCoords = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]); // Date for the square.
+            gl.bindBuffer(gl.ARRAY_BUFFER, square.buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, squareCoords, gl.STATIC_DRAW);
+
+            coordsBuffer = gl.createBuffer();
+
+            createNextGenShaderAndTexture();
+
+        } // end initGL()
+
+
+
+        /* Creates a shader program for use in the WebGL context gl, and returns the
+         * identifier for that program. 
+         *    The second and third parameters are the id attributes for <script>
+         * elementst that contain the source code for the vertex and fragment shaders.
+         */
+        function createProgram(gl, vertexShaderID, fragmentShaderID) {
+            function getTextContent(elementID) { // Get text content of an HTML element.
+                var element = document.getElementById(elementID);
+                var node = element.firstChild;
+                var str = "";
+                while (node) {
+                    if (node.nodeType == 3) // this is a text node
+                        str += node.textContent;
+                    node = node.nextSibling;
+                }
+                return str;
+            }
+            try {
+                var vertexShaderSource = getTextContent(vertexShaderID);
+                var fragmentShaderSource = getTextContent(fragmentShaderID);
+            }
+            catch (e) {
+                throw "Error: Could not get shader source code from script element " +
+                vertexShaderID + " or " + fragmentShaderID;
+            }
+            var vsh = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vsh, vertexShaderSource);
+            gl.compileShader(vsh);
+            if (!gl.getShaderParameter(vsh, gl.COMPILE_STATUS)) {
+                throw "Error in vertex shader (" + vertexShaderID + "):  " + gl.getShaderInfoLog(vsh);
+            }
+            var fsh = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fsh, fragmentShaderSource);
+            gl.compileShader(fsh);
+            if (!gl.getShaderParameter(fsh, gl.COMPILE_STATUS)) {
+                throw "Error in fragment shader (" + fragmentShaderID + "):" + gl.getShaderInfoLog(fsh);
+            }
+            var prog = gl.createProgram();
+            gl.attachShader(prog, vsh);
+            gl.attachShader(prog, fsh);
+            gl.linkProgram(prog);
+            if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+                throw "Link error in program:  " + gl.getProgramInfoLog(prog);
+            }
+            return prog;
+        }
+
+
+        /** Load the puffer example as an image texture.  The image is purely black and
+         *  white, to match the convention for alive/dead cells in this program.
+         *  A texture with the same size as the canvas is created, and the loaded
+         *  image, which is much smaller, is loaded into it as a subimage.  That
+         *  texture is used to transfer the data for the example onto the board,
+         *  by drawing a textured square that covers the canvas.
+         */
+        function loadPufferExample(texture, textureUnit) {
+            var img = new Image();
+            img.onload = function () {
+                gl.activeTexture(textureUnit);
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, canvas.width, canvas.width, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, null);
+                try {
+                    gl.texSubImage2D(gl.TEXTURE_2D, 0, 100, canvas.width / 2 - 80, gl.LUMINANCE, gl.UNSIGNED_BYTE, img);
+                } catch (e) {
+                    console.log("Could not load puffer example from textures/puffer.png");
+                    return;
+                }
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+                var pufferOption = document.createElement("option");
+                pufferOption.innerHTML = "Puffer";
+                pufferOption.setAttribute("value", "5");
+                document.getElementById("configType").appendChild(pufferOption);
+            };
+            img.onerror = function () {
+                console.log("Could not load puffer example from textures/puffer.png");
+            };
+            img.src = "textures/puffer.png"; // location of image file relative to this page.
+        }
+
+
+        /**************** Animation support *********************/
+
+        // (Note that only a certain number of frames can actually be displayed per second,
+        // possibly about 60 depending on the display refresh rate.  So we might have to
+        // compute several generations in one frame to keep up with the frame rate.  On the
+        // other hand, for targeted frame rates less than the display rate, there can be
+        // many frames in which nothing is done.
+
+        var animating = false;  // is the animation running?
+        var startTime;          // When did current animation sequence start? (milliseconds)
+        var startGeneration;    // What was the geneation at the start of the current animation.
+        var targetGPS = 60;     // How many frames per second do we want? (from popup menu)
+
+        function doFrame(time) {
+            if (animating) { // continue the animation
+                if (startTime == null) {
+                    // Animation is just starting.  Store the stating time and generation
+                    // number, and do one generation.
+                    startTime = time;
+                    startGeneration = generation;
+                    computeOneGeneration();
+                    generation++;
+                    document.getElementById("gen").innerHTML = "" + generation;
+                }
+                else {
+                    // Animation is continuing.  Determine how many generations need
+                    // to be computed to keep up with targeted frames-per-second rate.
+                    // Do that many generations -- possibly zero but not more than
+                    // 10.  Compute and display the actual frames-per-second rate since
+                    // the start of this animation sequence.
+                    var elapsedTime = (time - startTime) / 1000;
+                    var elapsedGens = generation - startGeneration;
+                    var generationsPerSecond = elapsedGens / elapsedTime;
+                    var targetGeneration = startGeneration + Math.floor(targetGPS * elapsedTime);
+                    var neededGenerations = Math.min(10, targetGeneration - generation);
+                    if (neededGenerations > 0) {
+                        for (let i = 0; i < neededGenerations; i++) {
+                            computeOneGeneration();
+                            generation++;
+                        }
+                        document.getElementById("actualrate").innerHTML = "" + Math.round(generationsPerSecond);
+                        document.getElementById("gen").innerHTML = "" + generation;
+                    }
+                }
+                requestAnimationFrame(doFrame);
+            }
+            else { // Animation has ended.  Actual rate is only shown during the animation
+                document.getElementById("actualrate").innerHTML = "";
+            }
+        }
+
+        function doSpeedChoice() {
+            document.getElementById("actualrate").innerHTML = "";
+            startTime = null;
+            targetGPS = Number(document.getElementById("speedSelect").value);
+        }
+        function doAnimationCheckbox() {
+            var anim = document.getElementById("animateCheckbox").checked;
+            if (anim != animating) {
+                animating = anim;
+                if (animating) {
+                    startGeneration = generation;
+                    startTime = null;
+                    requestAnimationFrame(doFrame);
+                }
+            }
+            document.getElementById("nextButton").disabled = animating;
+        }
+        function doNextGenButton() {
+            if (animating) // shouldn't happen
+                return;
+            computeOneGeneration();
+            generation++;
+            document.getElementById("gen").innerHTML = "" + generation;
+        }
+
+        /* Function to get current timestamp in milliseconds using high-precision timer
+           if available, and the Date class if not. */
+        var currentTime = window.performance ?
+            function () { return performance.now() } : function () { return new Date().getTime() };
+
+
+        /* Initialization function, called when page has loaded. */
+        function init() {
+            try {
+                canvas = document.getElementById("webglcanvas");
+                canvas.width = SIZE + SCALING;
+                canvas.height = SIZE + SCALING;
+                var options = { antialias: false, depth: false, preserveDrawingBuffer: true };
+                // Avoid antialiasing, since we need to avoid any blending of values.
+                // Keep the drawing buffer, so that the data it contains won't be lost before we
+                // copy it to the texture.
+                gl = canvas.getContext("webgl", options) ||
+                    canvas.getContext("experimental-webgl", options);
+                if (!gl) {
+                    throw "Browser does not support WebGL";
+                }
+            }
+            catch (e) {
+                document.getElementById("message").innerHTML =
+                    "<p>Sorry, could not get a WebGL graphics context.<br>Error: " + e + "</p>";
+                return;
+            }
+            try {
+                initGL();  // initialize the WebGL graphics context
+            }
+            catch (e) {
+                document.getElementById("message").innerHTML =
+                    "<p>Sorry, could not initialize the WebGL graphics context.<br>Error: " + e + "</p>";
+                return;
+            }
+            pufferTexture = gl.createTexture();
+            loadPufferExample(pufferTexture, gl.TEXTURE3);
+            document.getElementById("configType").value = "0";
+            document.getElementById("randomSeedCheckbox").checked = true;
+            document.getElementById("animateCheckbox").checked = false;
+            document.getElementById("speedSelect").value = "60";
+            document.getElementById("speedSelect").onchange = doSpeedChoice;
+            document.getElementById("animateCheckbox").onchange = doAnimationCheckbox;
+            document.getElementById("startButton").onclick = createInitialConfiguration;
+            document.getElementById("nextButton").onclick = doNextGenButton;
+            createInitialConfiguration();
+        }
+
+    </script>
+</head>
+
+<body onload="init()">
+
+    <div id="content">
+
+        <h2>WebGL Demo: Conway's Game of Life</h2>
+
+        <p style="font-weight: bold" id="message"></p>
+
+
+        <table border=0>
+            <tr valign=top>
+                <td>
+
+                    <div id=tools>
+
+                        <p><label><input type="checkbox" id="animateCheckbox"><b style="font-size: 125%">Run</b></label>
+                            <button id="nextButton" style="margin-left:60px">Next</button>
+                        </p>
+                        <p><button id="startButton">Restart with:</button>&nbsp;<select id="configType">
+                                <option value="0">Point</option>
+                                <option value="1">Cross</option>
+                                <option value="2">Patch</option>
+                                <option value="3">Solid Line</option>
+                                <option value="4">Dashed Line</option>
+                                <option value="5">Outlined Square</option>
+                                <!-- Puffer will be added as option 5 if it can be loaded. -->
+                            </select></p>
+                        <p><label><input type="checkbox" id="randomSeedCheckbox">Use Random Seed</label></p>
+                        <p>Target Speed:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<select id="speedSelect">
+                                <option value="360">360 Generations per Second</option>
+                                <option value="300">300 Generations per Second</option>
+                                <option value="240">240 Generations per Second</option>
+                                <option value="180">180 Generations per Second</option>
+                                <option value="120">120 Generations per Second</option>
+                                <option value="60">60 Generations per Second</option>
+                                <option value="30">30 Generations per Second</option>
+                                <option value="20">20 Generations per Second</option>
+                                <option value="10">10 Generations per Second</option>
+                                <option value="5">5 Generations per Second</option>
+                                <option value="3">3 Generations per Second</option>
+                                <option value="2">2 Generations per Second</option>
+                                <option value="1">1 Generations per Second</option>
+                            </select></p>
+                        <p>Generation:&nbsp;<span id="gen" style="font-weight:bold"></span></p>
+                        <p>Actual Gens/Sec: <span id="actualrate" style="font-weight:bold"></span></p>
+                    </div>
+                </td>
+                <td>
+                    <div>
+                        <canvas id="webglcanvas"></canvas>
+                    </div>
+                </td>
+            </tr>
+        </table>
+</body>
+
+</html>
