@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <title>Game of Life implemented with a fragment shader</title>
+</head>
+
+<body>
+  <div id="content" style=" text-align: center;">
+    <h1>Blablabla</h1>
+    <div><canvas id="canvas" style="image-rendering: pixelated;"></canvas></div>
+    <script type="x-shader/x-fragment" id="fragment-shader-display">
+      precision mediump float;
+      uniform sampler2D state;
+
+      void main(void) {
+        vec2 coord = vec2(gl_FragCoord);
+        gl_FragColor = texture2D(state, coord);
+      }
+</script>
+    <script type="x-shader/x-fragment" id="fragment-shader-stepper">
+      precision mediump float;
+      uniform sampler2D previousState;
+      uniform vec2 resolution;
+      uniform int step;
+      const int SCALE = 1;
+
+      int wasAlive(vec2 coord) {
+        if (coord.x < 0.0 || resolution.x < coord.x*float(SCALE) || coord.y < 0.0 || resolution.y < coord.y*float(SCALE)) return 0;
+        vec4 px = texture2D(previousState, coord*float(SCALE));
+        return px.r < 0.1 ? 1 : 0;
+      }
+      void main(void) {
+
+        vec2 coord = vec2(gl_FragColor.xy);
+        //vec2 coord = vec2(gl_FragCoord) - mod(vec2(gl_FragCoord), float(SCALE));
+        float midx = 0.5*resolution.x-mod(0.5*resolution.x,float(SCALE));
+        float midy = 0.5*resolution.y-mod(0.5*resolution.y,float(SCALE));
+
+        if(step>=0){
+          //if(coord.x!=midx || coord.y!=midy ){
+            if(gl_FragCoord.x>.1){
+            gl_FragColor = vec4(1.0,0.0,0.0,1.0);
+          } else {
+            gl_FragColor = vec4(1.0,1.0,1.0,1.0);   
+          }
+        } else {
+
+
+    //    vec2 coord = vec2(gl_FragCoord.xy);
+
+        int aliveNeighbors =
+          wasAlive(coord+vec2(-1.,-1.)) +
+          wasAlive(coord+vec2(-1.,0.)) +
+          wasAlive(coord+vec2(-1.,1.)) +
+          wasAlive(coord+vec2(0.,-1.)) +
+          wasAlive(coord+vec2(0.,1.)) +
+          wasAlive(coord+vec2(1.,-1.)) +
+          wasAlive(coord+vec2(1.,0.)) +
+          wasAlive(coord+vec2(1.,1.));
+    //    bool nowAlive = wasAlive(coord) == 1 ? 2 <= aliveNeighbors && aliveNeighbors <= 3 : 3 == aliveNeighbors;
+          bool nowAlive = 1<= aliveNeighbors && 3> aliveNeighbors;
+
+
+        gl_FragColor = nowAlive ? vec4(0.,0.,0.,1.) : vec4(1.,1.,1.,1.);
+      }
+      }
+</script>
+    <script>
+      const WIDTH = 64;
+      const HEIGHT = 64;
+      const PIXELSIZE = 1;
+
+      const startStateImg = new Image();
+
+      startStateImg.crossOrigin = "anonymous";
+
+      startStateImg.onload = function () {
+        const canvasEl = document.getElementById("canvas");
+        canvasEl.width = WIDTH;
+        canvasEl.height = HEIGHT;
+        const gl = canvasEl.getContext("webgl");
+
+        function createShader(ty, src) {
+          const s = gl.createShader(ty);
+          gl.shaderSource(s, src);
+          gl.compileShader(s);
+          if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+            console.error("Could not compile shader", ty, src, gl.getShaderInfoLog(s));
+          }
+          return s;
+        }
+        const vertexShader = createShader(gl.VERTEX_SHADER, "attribute vec2 coord; void main(void) { gl_Position = vec4(coord, 0.0, 1.0); }");
+        const fragShaderDisplay = createShader(gl.FRAGMENT_SHADER, document.getElementById("fragment-shader-display").innerText);
+        const fragShaderStepper = createShader(gl.FRAGMENT_SHADER, document.getElementById("fragment-shader-stepper").innerText);
+
+        function createProgram(vs, fs) {
+          const p = gl.createProgram();
+          gl.attachShader(p, vs);
+          gl.attachShader(p, fs);
+          gl.linkProgram(p);
+          if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+            console.error("Error linking program", gl.getProgramInfoLog(p));
+          }
+          return p;
+        }
+        const displayProg = createProgram(vertexShader, fragShaderDisplay);
+        const stepperProg = createProgram(vertexShader, fragShaderStepper);
+
+        gl.useProgram(stepperProg);
+
+        const stepperProgCoordLoc = gl.getAttribLocation(stepperProg, "coord");
+        const stepperProgPreviousStateLoc = gl.getUniformLocation(stepperProg, "previousState");
+        const stepperProgResolutionLoc = gl.getUniformLocation(stepperProg, "resolution");
+        const stepperProgStepLoc = gl.getUniformLocation(stepperProg, "step");
+
+        const displayProgCoordLoc = gl.getAttribLocation(displayProg, "coord");
+        const displayProgStateLoc = gl.getUniformLocation(displayProg, "state");
+
+        const vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+          -1, -1, 1, -1, 1, 1, -1, 1,
+        ]), gl.STATIC_DRAW);
+
+        // Note we must bind ARRAY_BUFFER before running vertexAttribPointer!
+        // This is confusing and deserves a blog post
+        // https://stackoverflow.com/questions/7617668/glvertexattribpointer-needed-everytime-glbindbuffer-is-called
+        gl.vertexAttribPointer(stepperProgCoordLoc, 2, gl.FLOAT, false, 0, 0);
+
+        const elementBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array([0, 1, 2, 3]), gl.STATIC_DRAW);
+
+        // const texture0 = gl.createTexture();
+        // gl.activeTexture(gl.TEXTURE0);
+        // gl.bindTexture(gl.TEXTURE_2D, texture0);
+        // //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, startStateImg);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        // gl.generateMipmap(gl.TEXTURE_2D);
+
+        // const texture1 = gl.createTexture();
+        // gl.activeTexture(gl.TEXTURE0 + 1);
+        // gl.bindTexture(gl.TEXTURE_2D, texture1);
+        // //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, startStateImg);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        // gl.generateMipmap(gl.TEXTURE_2D);
+
+        gl.activeTexture(gl.TEXTURE0);
+        const texture0 = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture0);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+        gl.activeTexture(gl.TEXTURE0 + 1);
+        const texture1 = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture1);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+
+
+        const framebuffers = [gl.createFramebuffer(), gl.createFramebuffer()];
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[0]);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture0, 0);
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[1]);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture1, 0);
+
+        let nextStateIndex = 0;
+        var step = 0;
+        window.setInterval(function () {
+          const previousStateIndex = 1 - nextStateIndex;
+
+          gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[nextStateIndex]);
+          gl.useProgram(stepperProg);
+          gl.enableVertexAttribArray(stepperProgCoordLoc);
+          gl.uniform1i(stepperProgPreviousStateLoc, previousStateIndex);
+          gl.uniform1i(stepperProgStepLoc, step);
+          gl.uniform2f(stepperProgResolutionLoc, WIDTH, HEIGHT);
+          gl.drawElements(gl.TRIANGLE_FAN, 4, gl.UNSIGNED_BYTE, 0);
+
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.useProgram(displayProg);
+          gl.uniform1i(displayProgStateLoc, nextStateIndex);
+          gl.drawElements(gl.TRIANGLE_FAN, 4, gl.UNSIGNED_BYTE, 0);
+          step++;
+          nextStateIndex = previousStateIndex;
+        }, 100);
+      };
+      startStateImg.src = "https://d33wubrfki0l68.cloudfront.net/c25c140d0864ea94751e8cff9608325e1f806d92/bb55f/assets/2017-10-22/game-of-life.png";
+    </script>
+
+
+
+
+</body>
+
+</html>
