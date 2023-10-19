@@ -2,675 +2,679 @@
 <html>
 
 <head>
-  <meta charset="utf-8">
-  <title>Pixel - Samasta</title>
+	<meta charset="utf-8">
+	<title>Pixel - Samasta</title>
 </head>
-  <script src="pixi.min.js"></script>
+<script src="pixi.min.js"></script>
+
 <body bgcolor="#26364A">
 
-<div align="center" id="body2">
-<div>
- <font color="White">Seed </font> <input type="text" value ="232" id="rule"><button onclick="randomRule()">Random Rule</button><button onclick="randomColor()">Random Color</button><button onclick="save()">save Image</button>
-</div>
-<div id="slidecontainer">
-  <input type="range" min="1" max="200" value="27" class="slider" id="stepSilder">
-  <font color="White">Level: <label id="step" >27</label></font> 
-    <button onclick="back()" >Back</button> 
-	 <button onclick="play()">Play</button> 
-	  <button onclick="stop()">Stop</button>
-	<button onclick="next()">evolve</button>
-	<button onclick="smooth()">smooth</button> 
-</div>
+	<div align="center" id="body2">
+		<div>
+			<font color="White">Seed </font> <input type="text" value="232" id="rule"><button
+				onclick="randomRule()">Random Rule</button><button onclick="randomColor()">Random Color</button><button
+				onclick="save()">save Image</button>
+		</div>
+		<div id="slidecontainer">
+			<input type="range" min="1" max="200" value="27" class="slider" id="stepSilder">
+			<font color="White">Level: <label id="step">27</label></font>
+			<button onclick="back()">Back</button>
+			<button onclick="play()">Play</button>
+			<button onclick="stop()">Stop</button>
+			<button onclick="next()">evolve</button>
+			<button onclick="smooth()">smooth</button>
+		</div>
 
-</div>
+	</div>
 
-  <script type="text/javascript" >
-//
-//MIT License
-//
-//Copyright (c) 2020 Stefan Wetzig
-//
-//Permission is hereby granted, free of charge, to any person obtaining a copy
-//of this software and associated documentation files (the "Software"), to deal
-//in the Software without restriction, including without limitation the rights
-//to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-//copies of the Software, and to permit persons to whom the Software is
-//furnished to do so, subject to the following conditions:
-//
-//The above copyright notice and this permission notice shall be included in all
-//copies or substantial portions of the Software.
-//
-//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-//AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-//SOFTWARE.
-//
-//
-//Mail: stefanwetzig@yahoo.de
-//
-//
-
-  
-//document
-var slider = document.getElementById("stepSilder");
-var output = document.getElementById("step");  
-  
-  
- //logic
-var SIZE = 257;
-var GRAPHICSSIZE = 128;
-var pixelSize = 3;
-var step = 27;
-var speed = 1000;
-var kindOfRules = 2; //(1=sum, 2=special)
-var ruleNumber = Number(document.getElementById("rule").value);
-
-//Soomth
-var smoothDelete1 = 3;
-var smoothDelete2 = 10;
-var smoothAdd1 = 5;
-var smoothAdd2 = 10;
-var smoothRange= 50;
-
-var cells = new Array(SIZE);
-var cellsUpdate = new Array(SIZE);
-var rules = new Array(69);
-var colors = new Array(69);
-var rulesC = new Array(69);
+	<script type="text/javascript">
+		//
+		//MIT License
+		//
+		//Copyright (c) 2020 Stefan Wetzig
+		//
+		//Permission is hereby granted, free of charge, to any person obtaining a copy
+		//of this software and associated documentation files (the "Software"), to deal
+		//in the Software without restriction, including without limitation the rights
+		//to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+		//copies of the Software, and to permit persons to whom the Software is
+		//furnished to do so, subject to the following conditions:
+		//
+		//The above copyright notice and this permission notice shall be included in all
+		//copies or substantial portions of the Software.
+		//
+		//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+		//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+		//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+		//AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+		//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+		//OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+		//SOFTWARE.
+		//
+		//
+		//Mail: stefanwetzig@yahoo.de
+		//
+		//
 
 
-//PIXIInit
-const app = new PIXI.Application({width: SIZE * pixelSize, height: SIZE * pixelSize, antialias: false });
-document.getElementById("body2").appendChild(app.view);
+		//document
+		var slider = document.getElementById("stepSilder");
+		var output = document.getElementById("step");
 
 
-//const blurFilter1 = new PIXI.filters.BlurFilter();
-//blurFilter1.blur =1.3;
-//graphics.filters = [blurFilter1];
-//var myView = document.getElementById('myCanvas');
-//var renderer = PIXI.autoDetectRenderer(SIZE * pixelSize, SIZE * pixelSize, myView); 
+		//logic
+		var SIZE = 257;
+		var GRAPHICSSIZE = 128;
+		var pixelSize = 3;
+		var step = 27;
+		var speed = 1000;
+		var kindOfRules = 2; //(1=sum, 2=special)
+		var ruleNumber = Number(document.getElementById("rule").value);
 
-const graphics1 = new PIXI.Graphics();
-const graphics2 = new PIXI.Graphics();
-graphics2.x=(GRAPHICSSIZE+1) * pixelSize;
-const graphics3 = new PIXI.Graphics();
-graphics3.y=(GRAPHICSSIZE+1) * pixelSize;
-const graphics4 = new PIXI.Graphics();
-graphics4.x=(GRAPHICSSIZE+1) * pixelSize;
-graphics4.y=(GRAPHICSSIZE+1) * pixelSize;
-//graphics.interactiveChildren = false;
-//graphics.cacheAsBitmap = false;
-app.stage.addChild(graphics1);
-app.stage.addChild(graphics2);
-app.stage.addChild(graphics3);
-app.stage.addChild(graphics4);
+		//Soomth
+		var smoothDelete1 = 3;
+		var smoothDelete2 = 10;
+		var smoothAdd1 = 5;
+		var smoothAdd2 = 10;
+		var smoothRange = 50;
 
-
-
+		var cells = new Array(SIZE);
+		var cellsUpdate = new Array(SIZE);
+		var rules = new Array(69);
+		var colors = new Array(69);
+		var rulesC = new Array(69);
 
 
+		//PIXIInit
+		const app = new PIXI.Application({ width: SIZE * pixelSize, height: SIZE * pixelSize, antialias: false });
+		document.getElementById("body2").appendChild(app.view);
 
-//init
-for(var i=0;i<SIZE;i++){
-cells[i]= new Array(SIZE);
-cellsUpdate[i] = new Array(SIZE);
-}
 
-initio();
-colors[0] = [0x000000];
-setRandomColor();
-initio();
-steps(step);
-function initio(){
-start();
-show();
-setRules();
+		//const blurFilter1 = new PIXI.filters.BlurFilter();
+		//blurFilter1.blur =1.3;
+		//graphics.filters = [blurFilter1];
+		//var myView = document.getElementById('myCanvas');
+		//var renderer = PIXI.autoDetectRenderer(SIZE * pixelSize, SIZE * pixelSize, myView); 
 
-}
+		const graphics1 = new PIXI.Graphics();
+		const graphics2 = new PIXI.Graphics();
+		graphics2.x = (GRAPHICSSIZE + 1) * pixelSize;
+		const graphics3 = new PIXI.Graphics();
+		graphics3.y = (GRAPHICSSIZE + 1) * pixelSize;
+		const graphics4 = new PIXI.Graphics();
+		graphics4.x = (GRAPHICSSIZE + 1) * pixelSize;
+		graphics4.y = (GRAPHICSSIZE + 1) * pixelSize;
+		//graphics.interactiveChildren = false;
+		//graphics.cacheAsBitmap = false;
+		app.stage.addChild(graphics1);
+		app.stage.addChild(graphics2);
+		app.stage.addChild(graphics3);
+		app.stage.addChild(graphics4);
 
 
 
 
 
 
-
-//-------------------------------------------------------------html functions
-let ticker = PIXI.Ticker.shared;
-ticker.autoStart = false;
-ticker.speed = 50;
-ticker.stop();
-var currentTime = 0;
-var lastTime= 0;
-
-ticker.add(function (time) {
-   currentTime+=time;
-//	console.log(currentTime);
-   if(currentTime-lastTime>=speed){
-	lastTime = currentTime;
-	next();
-	} 
-});
-
-slider.oninput = function() {
-  output.innerHTML = this.value;
-  step = this.value;
-} 
-slider.onmouseup = function(){
-start();
-steps(step);
-}
-
-document.addEventListener ('keydown', function (event) {
-
- if (event.keyCode == '37') {
-       back();
-    }
-    else if (event.keyCode == '39') {
-       next();
-    }
-});
-
-document.getElementById("rule").onchange = function () {
-	//step=1;
-    ruleNumber = Number(document.getElementById("rule").value);
-    console.log(ruleNumber);
-	initio();
-	setRandomColor();
-	steps(step);
-}
-
-
-function next(){
-step++;
-slider.value = step;
-output.innerHTML = slider.value.toString();
-
-nextStep();
-show();
-}
-
-function back(){
-step--;
-slider.value = step;
-output.innerHTML = slider.value.toString();
-start();
-steps(step);
-show();
-}
-
-function play(){
-ticker.start();
-}
-function stop(){
-ticker.stop();
-}
-function randomRule(){
-	setRandomRules();
-	initio();
-	setRandomColor();
-	steps(step);
-}
-
-
-function save(){
-var image = app.renderer.plugins.extract.image(app.stage);
-	image.onload = () => {
-    var w= window.open(image.src, 'asdwdasd')
-	w.document.title = ruleNumber;
-  }	
-}
-
-function save2(){
-var image = app.renderer.plugins.extract.image(app.stage);
-	image.onload = () => {
-    var w= window.open(image.src, 'asdwdasd')
-	w.document.title = ruleNumber;
-  }	
-}
-
-
-
-
-
-
-
-function setRandomRules(){
-	ruleNumber = Math.floor(Math.random() * 11232345);
-	document.getElementById("rule").value = ruleNumber;
-}
-
-
-function randomColor(){
-	//ruleNumber = Number(document.getElementById("rule").value);
-	initio();
-	setRandomColor();
-	steps(step);
-}
-
-function setRandomColor(){
-
-for(var i=1;i<colors.length;i++){
-	colors[i]=Math.floor(Math.random() * 16777216);
-	rulesC[i]=rules[i]*i;
-	}
-	rulesC[0]=1;
-	//console.log(rules);
-	//console.log(rulesC);
-}
-
-
-//set cells zero and startpoint
-function start(){
-	for(var i=0;i<SIZE;i++){
-		for(var j=0;j<SIZE;j++){
-		cells[i][j]=0;
-		cellsUpdate[i][j]=0;
+		//init
+		for (var i = 0; i < SIZE; i++) {
+			cells[i] = new Array(SIZE);
+			cellsUpdate[i] = new Array(SIZE);
 		}
-	}
-	cells[Math.round(SIZE/2-0.5)][Math.round(SIZE/2-0.5)]=1;
-	
-}
 
-//ruleNumber to ruleArray
-function setRules(){
-if(kindOfRules=1){
-setRuleAsymmetric();
-} else {
-setRuleSymmetric();
-}
-}
+		initio();
+		colors[0] = [0x000000];
+		setRandomColor();
+		initio();
+		steps(step);
+		function initio() {
+			start();
+			show();
+			setRules();
 
-function setRuleAsymmetric(){
-	for(var i = 0;i<rules.length;i++){
-		rules[i]=0;
-	}
-	var bin = (ruleNumber >>> 0).toString(2);
-	for(var i = 0;i<bin.length && i<rules.length;i++){
-		rules[i]=Number(bin.charAt(i));
-	}
-}
-
-function setRuleSymmetric(){
-	for(var i = 0;i<rules.length;i++){
-		rules[i]=0;
-	}
-	rules[0]=1;
-	rules[1]=1;
-	var bin = (ruleNumber >>> 0).toString(2);
-	for(var i = 2;i<bin.length && i<rules.length-1;i+=2){
-		rules[i]=Number(bin.charAt(i));
-		rules[i+1]=Number(bin.charAt(i));
-	}
-}
+		}
 
 
 
 
-function show2(){
-	graphics1.clear();
-	graphics2.clear();
-	graphics3.clear();
-	graphics4.clear();
 
-	for(var i=1;i<SIZE-1;i++){
-		for(var j=1;j<SIZE-1;j++){
-			if(i<=129 && j<=129){
-			 if(cells[i][j]<colors.length){ 
-			 
-				graphics1.beginFill(colors[cells[i][j]]);
-				graphics1.drawRect(pixelSize*i, pixelSize*j, pixelSize, pixelSize);
-				
-			}else {
-				graphics1.beginFill(0x000000);
-				graphics1.drawRect(pixelSize*i, pixelSize*j, pixelSize, pixelSize);
-				graphics1.endFill();
+
+
+		//-------------------------------------------------------------html functions
+		let ticker = PIXI.Ticker.shared;
+		ticker.autoStart = false;
+		ticker.speed = 50;
+		ticker.stop();
+		var currentTime = 0;
+		var lastTime = 0;
+
+		ticker.add(function (time) {
+			currentTime += time;
+			//	console.log(currentTime);
+			if (currentTime - lastTime >= speed) {
+				lastTime = currentTime;
+				next();
 			}
-			if(i>129 && j<=129){
-			 if(cells[i][j]<colors.length){ 
-			 
-				graphics2.beginFill(colors[cells[i][j]]);
-				graphics2.drawRect(pixelSize*i-GRAPHICSSIZE * pixelSize+1, pixelSize*j, pixelSize, pixelSize);
-				
-			}else {
-				graphics2.beginFill(0x000000);
-				graphics2.drawRect(pixelSize*i-GRAPHICSSIZE * pixelSize+1, pixelSize*j, pixelSize, pixelSize);
-				graphics2.endFill();
+		});
+
+		slider.oninput = function () {
+			output.innerHTML = this.value;
+			step = this.value;
+		}
+		slider.onmouseup = function () {
+			start();
+			steps(step);
+		}
+
+		document.addEventListener('keydown', function (event) {
+
+			if (event.keyCode == '37') {
+				back();
 			}
-			} else if(i<=129 && j>129){
-			 if(cells[i][j]<colors.length){ 
-			 
-				graphics3.beginFill(colors[cells[i][j]]);
-				graphics3.drawRect(pixelSize*i, pixelSize*j-GRAPHICSSIZE * pixelSize+1, pixelSize, pixelSize);
-				
-			}else {
-				graphics3.beginFill(0x000000);
-				graphics3.drawRect(pixelSize*i, pixelSize*j-GRAPHICSSIZE * pixelSize+1, pixelSize, pixelSize);
-				graphics3.endFill();
+			else if (event.keyCode == '39') {
+				next();
 			}
+		});
+
+		document.getElementById("rule").onchange = function () {
+			//step=1;
+			ruleNumber = Number(document.getElementById("rule").value);
+			console.log(ruleNumber);
+			initio();
+			setRandomColor();
+			steps(step);
+		}
+
+
+		function next() {
+			step++;
+			slider.value = step;
+			output.innerHTML = slider.value.toString();
+
+			nextStep();
+			show();
+		}
+
+		function back() {
+			step--;
+			slider.value = step;
+			output.innerHTML = slider.value.toString();
+			start();
+			steps(step);
+			show();
+		}
+
+		function play() {
+			ticker.start();
+		}
+		function stop() {
+			ticker.stop();
+		}
+		function randomRule() {
+			setRandomRules();
+			initio();
+			setRandomColor();
+			steps(step);
+		}
+
+
+		function save() {
+			var image = app.renderer.plugins.extract.image(app.stage);
+			image.onload = () => {
+				var w = window.open(image.src, 'asdwdasd')
+				w.document.title = ruleNumber;
+			}
+		}
+
+		function save2() {
+			var image = app.renderer.plugins.extract.image(app.stage);
+			image.onload = () => {
+				var w = window.open(image.src, 'asdwdasd')
+				w.document.title = ruleNumber;
+			}
+		}
+
+
+
+
+
+
+
+		function setRandomRules() {
+			ruleNumber = Math.floor(Math.random() * 11232345);
+			document.getElementById("rule").value = ruleNumber;
+		}
+
+
+		function randomColor() {
+			//ruleNumber = Number(document.getElementById("rule").value);
+			initio();
+			setRandomColor();
+			steps(step);
+		}
+
+		function setRandomColor() {
+
+			for (var i = 1; i < colors.length; i++) {
+				colors[i] = Math.floor(Math.random() * 16777216);
+				rulesC[i] = rules[i] * i;
+			}
+			rulesC[0] = 1;
+			//console.log(rules);
+			//console.log(rulesC);
+		}
+
+
+		//set cells zero and startpoint
+		function start() {
+			for (var i = 0; i < SIZE; i++) {
+				for (var j = 0; j < SIZE; j++) {
+					cells[i][j] = 0;
+					cellsUpdate[i][j] = 0;
+				}
+			}
+			cells[Math.round(SIZE / 2 - 0.5)][Math.round(SIZE / 2 - 0.5)] = 1;
+
+		}
+
+		//ruleNumber to ruleArray
+		function setRules() {
+			if (kindOfRules = 1) {
+				setRuleAsymmetric();
 			} else {
-			 if(cells[i][j]<colors.length){ 
-			 
-				graphics4.beginFill(colors[cells[i][j]]);
-				graphics4.drawRect(pixelSize*i-GRAPHICSSIZE * pixelSize+1, pixelSize*j-GRAPHICSSIZE * pixelSize+1, pixelSize, pixelSize);
-				
-			}else {
-				graphics4.beginFill(0x000000);
-				graphics4.drawRect(pixelSize*i-GRAPHICSSIZE * pixelSize+1, pixelSize*j-GRAPHICSSIZE * pixelSize+1, pixelSize, pixelSize);
-				graphics4.endFill();
-			}
+				setRuleSymmetric();
 			}
 		}
-	}
 
-}
-}
-
-function show(){
-show3(graphics1,0,0,1,-1,-1,1);
-show3(graphics2,129,0,1,1,-1,-1);
-show3(graphics3,0,129,-1,-1,1,1);
-show3(graphics4,129,129,-1,1,1,-1);
-
-}
-
-//clear graphics and show cells
-function show3(graphics,x,y,o,r,u,l){
-	graphics.clear();
-	for(var i=l;i<GRAPHICSSIZE-r;i++){
-		for(var j=o;j<GRAPHICSSIZE-u;j++){
-		//console.log(i+x);
-			 if(cells[i+x][j+y]<colors.length){ 
-				graphics.beginFill(colors[cells[i+x][j+y]]);
-				graphics.drawRect(pixelSize*i, pixelSize*j, pixelSize, pixelSize);
-				//graphics.endFill();
-			}else {
-				graphics.beginFill(0x000000);
-				graphics.drawRect(pixelSize*i, pixelSize*j, pixelSize, pixelSize);
-				//graphics.endFill();
+		function setRuleAsymmetric() {
+			for (var i = 0; i < rules.length; i++) {
+				rules[i] = 0;
+			}
+			var bin = (ruleNumber >>> 0).toString(2);
+			for (var i = 0; i < bin.length && i < rules.length; i++) {
+				rules[i] = Number(bin.charAt(i));
 			}
 		}
-	}
-}
 
-function steps(s) {
-	for(var i = 1;i<s;i++){
-		nextStep()
-	}
-	show();
-}
-function smooth(){
+		function setRuleSymmetric() {
+			for (var i = 0; i < rules.length; i++) {
+				rules[i] = 0;
+			}
+			rules[0] = 1;
+			rules[1] = 1;
+			var bin = (ruleNumber >>> 0).toString(2);
+			for (var i = 2; i < bin.length && i < rules.length - 1; i += 2) {
+				rules[i] = Number(bin.charAt(i));
+				rules[i + 1] = Number(bin.charAt(i));
+			}
+		}
 
-	for(var x=2;x<SIZE-2;x++){
-		for(var y=2;y<SIZE-2;y++){
-			if(Math.abs(x-Math.round(SIZE/2-0.5))+Math.abs(y-Math.round(SIZE/2-0.5))>smoothRange){
-				var sum1 = 0;
-				var col1 = 0;
-				var colArray = [0,0,0,0,0,0,0,0,0];
 
-				var sum2 = 0;
-				for(var i = -1;i<2;i++){
-					for(var j=-1;j<2;j++){
-						if(i!=0 || j!=0){
-						if(cells[x+i][y+j]!=0){
-							colArray[i+1+(j+1)*3]=cells[x+i][y+j];
-						sum1++;
+
+
+		function show2() {
+			graphics1.clear();
+			graphics2.clear();
+			graphics3.clear();
+			graphics4.clear();
+
+			for (var i = 1; i < SIZE - 1; i++) {
+				for (var j = 1; j < SIZE - 1; j++) {
+					if (i <= 129 && j <= 129) {
+						if (cells[i][j] < colors.length) {
+
+							graphics1.beginFill(colors[cells[i][j]]);
+							graphics1.drawRect(pixelSize * i, pixelSize * j, pixelSize, pixelSize);
+
+						} else {
+							graphics1.beginFill(0x000000);
+							graphics1.drawRect(pixelSize * i, pixelSize * j, pixelSize, pixelSize);
+							graphics1.endFill();
+						}
+						if (i > 129 && j <= 129) {
+							if (cells[i][j] < colors.length) {
+
+								graphics2.beginFill(colors[cells[i][j]]);
+								graphics2.drawRect(pixelSize * i - GRAPHICSSIZE * pixelSize + 1, pixelSize * j, pixelSize, pixelSize);
+
+							} else {
+								graphics2.beginFill(0x000000);
+								graphics2.drawRect(pixelSize * i - GRAPHICSSIZE * pixelSize + 1, pixelSize * j, pixelSize, pixelSize);
+								graphics2.endFill();
+							}
+						} else if (i <= 129 && j > 129) {
+							if (cells[i][j] < colors.length) {
+
+								graphics3.beginFill(colors[cells[i][j]]);
+								graphics3.drawRect(pixelSize * i, pixelSize * j - GRAPHICSSIZE * pixelSize + 1, pixelSize, pixelSize);
+
+							} else {
+								graphics3.beginFill(0x000000);
+								graphics3.drawRect(pixelSize * i, pixelSize * j - GRAPHICSSIZE * pixelSize + 1, pixelSize, pixelSize);
+								graphics3.endFill();
+							}
+						} else {
+							if (cells[i][j] < colors.length) {
+
+								graphics4.beginFill(colors[cells[i][j]]);
+								graphics4.drawRect(pixelSize * i - GRAPHICSSIZE * pixelSize + 1, pixelSize * j - GRAPHICSSIZE * pixelSize + 1, pixelSize, pixelSize);
+
+							} else {
+								graphics4.beginFill(0x000000);
+								graphics4.drawRect(pixelSize * i - GRAPHICSSIZE * pixelSize + 1, pixelSize * j - GRAPHICSSIZE * pixelSize + 1, pixelSize, pixelSize);
+								graphics4.endFill();
+							}
+						}
+					}
+				}
+
+			}
+		}
+
+		function show() {
+			show3(graphics1, 0, 0, 1, -1, -1, 1);
+			show3(graphics2, 129, 0, 1, 1, -1, -1);
+			show3(graphics3, 0, 129, -1, -1, 1, 1);
+			show3(graphics4, 129, 129, -1, 1, 1, -1);
+
+		}
+
+		//clear graphics and show cells
+		function show3(graphics, x, y, o, r, u, l) {
+			graphics.clear();
+			for (var i = l; i < GRAPHICSSIZE - r; i++) {
+				for (var j = o; j < GRAPHICSSIZE - u; j++) {
+					//console.log(i+x);
+					if (cells[i + x][j + y] < colors.length) {
+						graphics.beginFill(colors[cells[i + x][j + y]]);
+						graphics.drawRect(pixelSize * i, pixelSize * j, pixelSize, pixelSize);
+						//graphics.endFill();
+					} else {
+						graphics.beginFill(0x000000);
+						graphics.drawRect(pixelSize * i, pixelSize * j, pixelSize, pixelSize);
+						//graphics.endFill();
 					}
 				}
 			}
 		}
-		for(var i = -2;i<3;i++){
-			for(var j=-2;j<3;j++){
-				if(i!=0 || j!=0){
-				if(cells[x+i][y+j]!=0){
-				//colArray2[i+2+(j+2)*5]=cells[x+i][y+j];
-				sum2++;
-				}
+
+		function steps(s) {
+			for (var i = 1; i < s; i++) {
+				nextStep()
+			}
+			show();
+		}
+		function smooth() {
+
+			for (var x = 2; x < SIZE - 2; x++) {
+				for (var y = 2; y < SIZE - 2; y++) {
+					if (Math.abs(x - Math.round(SIZE / 2 - 0.5)) + Math.abs(y - Math.round(SIZE / 2 - 0.5)) > smoothRange) {
+						var sum1 = 0;
+						var col1 = 0;
+						var colArray = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+						var sum2 = 0;
+						for (var i = -1; i < 2; i++) {
+							for (var j = -1; j < 2; j++) {
+								if (i != 0 || j != 0) {
+									if (cells[x + i][y + j] != 0) {
+										colArray[i + 1 + (j + 1) * 3] = cells[x + i][y + j];
+										sum1++;
+									}
+								}
+							}
+						}
+						for (var i = -2; i < 3; i++) {
+							for (var j = -2; j < 3; j++) {
+								if (i != 0 || j != 0) {
+									if (cells[x + i][y + j] != 0) {
+										//colArray2[i+2+(j+2)*5]=cells[x+i][y+j];
+										sum2++;
+									}
+								}
+							}
+						}
+						if (sum1 < smoothDelete1 && sum2 < smoothDelete2) {
+							//console.log(sum1 + " " + sum2);
+							cellsUpdate[x][y] = 0;
+						} else if (sum1 > smoothAdd1 && sum2 > smoothAdd2 && cells[x][y] == 0) {
+							//	console.log(sum1 + " " + sum2 + " color " + Math.round(col1/6));
+							cellsUpdate[x][y] = getMajorColor(colArray);//the most color
+						}
+					}
 				}
 			}
-		}
-		if(sum1<smoothDelete1 && sum2<smoothDelete2){
-		//console.log(sum1 + " " + sum2);
-		cellsUpdate[x][y]=0;
-		} else if(sum1>smoothAdd1 && sum2>smoothAdd2 && cells[x][y]==0){
-	//	console.log(sum1 + " " + sum2 + " color " + Math.round(col1/6));
-		cellsUpdate[x][y]=getMajorColor(colArray);//the most color
-		}
-		}
-		}
-	}
-	for(var x=1;x<SIZE-1;x++){
-		for(var y=1;y<SIZE-1;y++){
-		cells[x][y] = cellsUpdate[x][y];
+			for (var x = 1; x < SIZE - 1; x++) {
+				for (var y = 1; y < SIZE - 1; y++) {
+					cells[x][y] = cellsUpdate[x][y];
 
-		}
-	}
-show();
-
-}
-
-
-
-function nextStep() {
-
-	var around = new Array(8);
-	for(var x=1;x<SIZE-1;x++){
-		for(var y=1;y<SIZE-1;y++){
-		around[0] = cells[x-1][y-1];
-		around[1] = cells[x][y-1];
-		around[2] = cells[x+1][y-1];
-		around[3] = cells[x+1][y];
-		around[4] = cells[x+1][y+1];
-		around[5] = cells[x][y+1];
-		around[6] = cells[x-1][y+1];
-		around[7] = cells[x-1][y];
-		for (var i=0;i<8;i++) {
-			if(around[i]!=0) {
-				around[i]=1;	
+				}
 			}
+			show();
+
 		}
-		if(kindOfRules=1){
-		cellsUpdate[x][y]=rule(around);
-		} else {
-		cellsUpdate[x][y]=rule2(around);
-		//console.log(cells[x][y]);
+
+
+
+		function nextStep() {
+
+			var around = new Array(8);
+			for (var x = 1; x < SIZE - 1; x++) {
+				for (var y = 1; y < SIZE - 1; y++) {
+					around[0] = cells[x - 1][y - 1];
+					around[1] = cells[x][y - 1];
+					around[2] = cells[x + 1][y - 1];
+					around[3] = cells[x + 1][y];
+					around[4] = cells[x + 1][y + 1];
+					around[5] = cells[x][y + 1];
+					around[6] = cells[x - 1][y + 1];
+					around[7] = cells[x - 1][y];
+					for (var i = 0; i < 8; i++) {
+						if (around[i] != 0) {
+							around[i] = 1;
+						}
+					}
+					if (kindOfRules = 1) {
+						cellsUpdate[x][y] = rule(around);
+					} else {
+						cellsUpdate[x][y] = rule2(around);
+						//console.log(cells[x][y]);
+					}
+				}
+			}
+			for (var x = 1; x < SIZE - 1; x++) {
+				for (var y = 1; y < SIZE - 1; y++) {
+					cells[x][y] = cellsUpdate[x][y];
+					if (cells[x][y] != 0) {
+						//console.log(x+ " " + y + " - " + cellsUpdate[x][y]);
+					}
+				}
+			}
+
+
 		}
+
+
+		//Sum
+		function rule(a) {
+			var sum = a[0] + a[1] + a[2] + a[3] + a[4] + a[5] + a[6] + a[7];
+			if (sum == 0) return 0;
+			if (sum == 1) return rulesC[0];
+			if (sum == 2) return rulesC[1];
+			if (sum == 3) return rulesC[2];
+			if (sum == 4) return rulesC[3];
+			if (sum == 5) return rulesC[4];
+			if (sum == 6) return rulesC[5];
+			if (sum == 7) return rulesC[6];
+			return rulesC[7];
 		}
-	}
-	for(var x=1;x<SIZE-1;x++){
-		for(var y=1;y<SIZE-1;y++){
-		cells[x][y] = cellsUpdate[x][y];
-		if(cells[x][y]!=0){
-		//console.log(x+ " " + y + " - " + cellsUpdate[x][y]);
+
+		//sonstiges
+		function rule2(a) {
+			var sum = a[0] + a[1] + a[2] + a[3] + a[4] + a[5] + a[6] + a[7];
+			//NULL
+			if (check(a, [0, 0, 0, 0, 0, 0, 0, 0])) return 0;//MUST
+
+			//EINS
+			if (check4(a, [1, 0, 0, 0, 0, 0, 0, 0])) return rulesC[0];//MUST oder
+			if (check4(a, [0, 1, 0, 0, 0, 0, 0, 0])) return rulesC[1];//MUST
+
+
+			//ZWEI
+			if (check4(a, [1, 1, 0, 0, 0, 0, 0, 0])) return rulesC[2];
+			if (check4(a, [0, 1, 1, 0, 0, 0, 0, 0])) return rulesC[3];
+
+			if (check4(a, [1, 0, 1, 0, 0, 0, 0, 0])) return rulesC[4];
+			if (check4(a, [0, 1, 0, 1, 0, 0, 0, 0])) return rulesC[5];
+
+			if (check4(a, [1, 0, 0, 1, 0, 0, 0, 0])) return rulesC[6];
+			if (check4(a, [0, 1, 0, 0, 1, 0, 0, 0])) return rulesC[7];
+
+			if (check4(a, [1, 0, 0, 0, 1, 0, 0, 0])) return rulesC[8];
+			if (check4(a, [0, 1, 0, 0, 0, 1, 0, 0])) return rulesC[9];
+
+			//DREI
+			if (check4(a, [1, 1, 1, 0, 0, 0, 0, 0])) return rulesC[10];
+			if (check4(a, [0, 1, 1, 1, 0, 0, 0, 0])) return rulesC[11];
+
+			if (check4(a, [1, 1, 0, 1, 0, 0, 0, 0])) return rulesC[12];
+			if (check4(a, [0, 1, 1, 0, 1, 0, 0, 0])) return rulesC[13];
+
+			if (check4(a, [1, 1, 0, 0, 1, 0, 0, 0])) return rulesC[14];
+			if (check4(a, [0, 1, 1, 0, 0, 1, 0, 0])) return rulesC[15];
+
+			if (check4(a, [1, 1, 0, 0, 0, 1, 0, 0])) return rulesC[16];
+			if (check4(a, [0, 1, 1, 0, 0, 0, 1, 0])) return rulesC[17];
+
+			if (check4(a, [1, 1, 0, 0, 0, 0, 1, 0])) return rulesC[18];
+			if (check4(a, [0, 1, 1, 0, 0, 0, 0, 1])) return rulesC[19];
+
+			if (check4(a, [1, 0, 1, 0, 1, 0, 0, 0])) return rulesC[20];
+			if (check4(a, [0, 1, 0, 1, 0, 1, 0, 0])) return rulesC[21];
+
+			if (check4(a, [1, 0, 1, 0, 0, 1, 0, 0])) return rulesC[22];
+			if (check4(a, [0, 1, 0, 1, 0, 0, 1, 0])) return rulesC[23];
+
+			//VIER
+
+			if (check4(a, [1, 1, 1, 1, 0, 0, 0, 0])) return rulesC[24];
+			if (check4(a, [0, 1, 1, 1, 1, 0, 0, 0])) return rulesC[25];
+
+			if (check4(a, [1, 1, 1, 0, 1, 0, 0, 0])) return rulesC[26];
+			if (check4(a, [0, 1, 1, 1, 0, 1, 0, 0])) return rulesC[27];
+
+			if (check4(a, [1, 1, 1, 0, 0, 1, 0, 0])) return rulesC[28];
+			if (check4(a, [0, 1, 1, 1, 0, 0, 1, 0])) return rulesC[29];
+
+			if (check4(a, [1, 1, 1, 0, 0, 0, 1, 0])) return rulesC[30];
+			if (check4(a, [0, 1, 1, 1, 0, 0, 0, 1])) return rulesC[31];
+
+			if (check4(a, [1, 1, 0, 1, 1, 0, 0, 0])) return rulesC[32];
+			if (check4(a, [0, 1, 1, 0, 1, 1, 0, 0])) return rulesC[33];
+
+			if (check4(a, [1, 1, 0, 1, 0, 1, 0, 0])) return rulesC[34];
+			if (check4(a, [0, 1, 1, 0, 1, 0, 1, 0])) return rulesC[35];
+
+			if (check4(a, [1, 1, 0, 1, 0, 0, 1, 0])) return rulesC[36];
+			if (check4(a, [0, 1, 1, 0, 1, 0, 0, 1])) return rulesC[37];
+
+			if (check4(a, [1, 1, 0, 0, 1, 0, 1, 0])) return rulesC[38];
+			if (check4(a, [0, 1, 1, 0, 0, 1, 0, 1])) return rulesC[39];
+
+			if (check4(a, [1, 1, 0, 0, 1, 1, 0, 0])) return rulesC[40];//2
+			if (check4(a, [0, 1, 1, 0, 0, 1, 1, 0])) return rulesC[41];//2
+
+			if (check(a, [1, 0, 1, 0, 1, 0, 1, 0])) return rulesC[42];//1
+			if (check(a, [0, 1, 0, 1, 0, 1, 0, 1])) return rulesC[43];//1
+
+			//FÜNF
+
+			if (check4(a, [0, 0, 0, 1, 1, 1, 1, 1])) return rulesC[44];
+			if (check4(a, [0, 0, 0, 1, 1, 1, 1, 1])) return rulesC[45];
+
+			if (check4(a, [0, 0, 1, 0, 1, 1, 1, 1])) return rulesC[46];
+			if (check4(a, [1, 0, 0, 1, 0, 1, 1, 1])) return rulesC[47];
+
+			if (check4(a, [0, 0, 1, 1, 0, 1, 1, 1])) return rulesC[48];
+			if (check4(a, [1, 0, 0, 1, 1, 0, 1, 1])) return rulesC[49];
+
+			if (check4(a, [0, 0, 1, 1, 1, 0, 1, 1])) return rulesC[50];
+			if (check4(a, [1, 0, 0, 1, 1, 1, 0, 1])) return rulesC[51];
+
+			if (check4(a, [0, 0, 1, 1, 1, 1, 0, 1])) return rulesC[52];
+			if (check4(a, [1, 0, 0, 1, 1, 1, 1, 0])) return rulesC[53];
+
+			if (check4(a, [0, 1, 0, 1, 0, 1, 1, 1])) return rulesC[54];
+			if (check4(a, [1, 0, 1, 0, 1, 0, 1, 1])) return rulesC[55];
+
+			if (check4(a, [0, 1, 0, 1, 1, 0, 1, 1])) return rulesC[56];
+			if (check4(a, [1, 0, 1, 0, 1, 1, 0, 1])) return rulesC[57];
+
+			//SECHS
+			if (check4(a, [0, 0, 1, 1, 1, 1, 1, 1])) return rulesC[58];
+			if (check4(a, [0, 1, 1, 0, 0, 0, 0, 0])) return rulesC[59];
+
+			if (check4(a, [0, 1, 0, 1, 1, 1, 1, 1])) return rulesC[60];
+			if (check4(a, [0, 1, 0, 1, 0, 0, 0, 0])) return rulesC[61];
+
+			if (check4(a, [0, 1, 1, 0, 1, 1, 1, 1])) return rulesC[62];
+			if (check4(a, [0, 1, 0, 0, 1, 0, 0, 0])) return rulesC[63];
+
+			if (check4(a, [0, 1, 1, 1, 0, 1, 1, 1])) return rulesC[64];
+			if (check4(a, [0, 1, 0, 0, 0, 1, 0, 0])) return rulesC[65];
+
+			//SIEBEN
+			if (check4(a, [0, 1, 1, 1, 1, 1, 1, 1])) return rulesC[66];
+			if (check4(a, [1, 0, 1, 1, 1, 1, 1, 1])) return rulesC[67];
+
+			//ACHT
+			if (check(a, [1, 1, 1, 1, 1, 1, 1, 1])) return rulesC[68];
+			return 0;
 		}
+
+		function check(a, b) {
+			for (var i = 0; i < a.length; i++) {
+				if (a[i] != b[i]) return false;
+			}
+			return true;
 		}
-	}
 
-	
-}
-
-
-//Sum
-function rule(a){
-var sum = a[0]+a[1]+a[2]+a[3]+a[4]+a[5]+a[6]+a[7];
-	if(sum == 0) return 0;
-		if(sum == 1) return rulesC[0];
-		if(sum == 2) return rulesC[1];
-		if(sum == 3) return rulesC[2];
-		if(sum == 4) return rulesC[3];
-		if(sum == 5) return rulesC[4];
-		if(sum == 6) return rulesC[5];
-		if(sum == 7) return rulesC[6];
-		return rulesC[7];
-}
-
-//sonstiges
-function rule2(a){
-	var sum = a[0]+a[1]+a[2]+a[3]+a[4]+a[5]+a[6]+a[7];
-	//NULL
-	if(check(a,[0,0,0,0,0,0,0,0])) return 0;//MUST
-	
-	//EINS
-	if(check4(a,[1,0,0,0,0,0,0,0]))return rulesC[0];//MUST oder
-	if(check4(a,[0,1,0,0,0,0,0,0]))return rulesC[1];//MUST
-	
-	
-	//ZWEI
-	if(check4(a,[1,1,0,0,0,0,0,0]))return rulesC[2];
-	if(check4(a,[0,1,1,0,0,0,0,0]))return rulesC[3];
-	
-	if(check4(a,[1,0,1,0,0,0,0,0]))return rulesC[4];
-	if(check4(a,[0,1,0,1,0,0,0,0]))return rulesC[5];
-	
-	if(check4(a,[1,0,0,1,0,0,0,0]))return rulesC[6];
-	if(check4(a,[0,1,0,0,1,0,0,0]))return rulesC[7];
-	
-	if(check4(a,[1,0,0,0,1,0,0,0]))return rulesC[8];
-	if(check4(a,[0,1,0,0,0,1,0,0]))return rulesC[9];
-	
-	//DREI
-	if(check4(a,[1,1,1,0,0,0,0,0]))return rulesC[10];
-	if(check4(a,[0,1,1,1,0,0,0,0]))return rulesC[11];
-	
-	if(check4(a,[1,1,0,1,0,0,0,0]))return rulesC[12];
-	if(check4(a,[0,1,1,0,1,0,0,0]))return rulesC[13];
-
-	if(check4(a,[1,1,0,0,1,0,0,0]))return rulesC[14];
-	if(check4(a,[0,1,1,0,0,1,0,0]))return rulesC[15];
-
-	if(check4(a,[1,1,0,0,0,1,0,0]))return rulesC[16];
-	if(check4(a,[0,1,1,0,0,0,1,0]))return rulesC[17];
-
-	if(check4(a,[1,1,0,0,0,0,1,0]))return rulesC[18];
-	if(check4(a,[0,1,1,0,0,0,0,1]))return rulesC[19];
-	
-	if(check4(a,[1,0,1,0,1,0,0,0]))return rulesC[20];
-	if(check4(a,[0,1,0,1,0,1,0,0]))return rulesC[21];
-	
-	if(check4(a,[1,0,1,0,0,1,0,0]))return rulesC[22];
-	if(check4(a,[0,1,0,1,0,0,1,0]))return rulesC[23];
-	
-	//VIER
-	
-	if(check4(a,[1,1,1,1,0,0,0,0]))return rulesC[24];
-	if(check4(a,[0,1,1,1,1,0,0,0]))return rulesC[25];
-	
-	if(check4(a,[1,1,1,0,1,0,0,0]))return rulesC[26];
-	if(check4(a,[0,1,1,1,0,1,0,0]))return rulesC[27];
-	
-	if(check4(a,[1,1,1,0,0,1,0,0]))return rulesC[28];
-	if(check4(a,[0,1,1,1,0,0,1,0]))return rulesC[29];
-	
-	if(check4(a,[1,1,1,0,0,0,1,0]))return rulesC[30];
-	if(check4(a,[0,1,1,1,0,0,0,1]))return rulesC[31];
-	
-	if(check4(a,[1,1,0,1,1,0,0,0]))return rulesC[32];
-	if(check4(a,[0,1,1,0,1,1,0,0]))return rulesC[33];
-	
-	if(check4(a,[1,1,0,1,0,1,0,0]))return rulesC[34];
-	if(check4(a,[0,1,1,0,1,0,1,0]))return rulesC[35];
-	
-	if(check4(a,[1,1,0,1,0,0,1,0]))return rulesC[36];
-	if(check4(a,[0,1,1,0,1,0,0,1]))return rulesC[37];
-	
-	if(check4(a,[1,1,0,0,1,0,1,0]))return rulesC[38];
-	if(check4(a,[0,1,1,0,0,1,0,1]))return rulesC[39];
-	
-	if(check4(a,[1,1,0,0,1,1,0,0]))return rulesC[40];//2
-	if(check4(a,[0,1,1,0,0,1,1,0]))return rulesC[41];//2
-	
-	if(check(a,[1,0,1,0,1,0,1,0]))return rulesC[42];//1
-	if(check(a,[0,1,0,1,0,1,0,1]))return rulesC[43];//1
-	
-	//FÜNF
-	
-	if(check4(a,[0,0,0,1,1,1,1,1]))return rulesC[44];
-	if(check4(a,[0,0,0,1,1,1,1,1]))return rulesC[45];
-	
-	if(check4(a,[0,0,1,0,1,1,1,1]))return rulesC[46];
-	if(check4(a,[1,0,0,1,0,1,1,1]))return rulesC[47];
-
-	if(check4(a,[0,0,1,1,0,1,1,1]))return rulesC[48];
-	if(check4(a,[1,0,0,1,1,0,1,1]))return rulesC[49];
-
-	if(check4(a,[0,0,1,1,1,0,1,1]))return rulesC[50];
-	if(check4(a,[1,0,0,1,1,1,0,1]))return rulesC[51];
-
-	if(check4(a,[0,0,1,1,1,1,0,1]))return rulesC[52];
-	if(check4(a,[1,0,0,1,1,1,1,0]))return rulesC[53];
-	
-	if(check4(a,[0,1,0,1,0,1,1,1]))return rulesC[54];
-	if(check4(a,[1,0,1,0,1,0,1,1]))return rulesC[55];
-	
-	if(check4(a,[0,1,0,1,1,0,1,1]))return rulesC[56];
-	if(check4(a,[1,0,1,0,1,1,0,1]))return rulesC[57];
-	
-	//SECHS
-	if(check4(a,[0,0,1,1,1,1,1,1]))return rulesC[58];
-	if(check4(a,[0,1,1,0,0,0,0,0]))return rulesC[59];
-	
-	if(check4(a,[0,1,0,1,1,1,1,1]))return rulesC[60];
-	if(check4(a,[0,1,0,1,0,0,0,0]))return rulesC[61];
-	
-	if(check4(a,[0,1,1,0,1,1,1,1]))return rulesC[62];
-	if(check4(a,[0,1,0,0,1,0,0,0]))return rulesC[63];
-	
-	if(check4(a,[0,1,1,1,0,1,1,1]))return rulesC[64];
-	if(check4(a,[0,1,0,0,0,1,0,0]))return rulesC[65];
-	
-	//SIEBEN
-	if(check4(a,[0,1,1,1,1,1,1,1]))return rulesC[66];
-	if(check4(a,[1,0,1,1,1,1,1,1]))return rulesC[67];
-	
-	//ACHT
-	if(check(a,[1,1,1,1,1,1,1,1]))return rulesC[68];
-	return 0;
-}
-
-function check(a,b){
-	for(var i=0;i<a.length;i++){
-	if(a[i]!=b[i])return false;
-	}
-	return true;
-}
-
-function check4(a,b){
-	return check(a,[b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7]]) || check(a,[b[2],b[3],b[4],b[5],b[6],b[7],b[0],b[1]]) || check(a,[b[4],b[5],b[6],b[7],b[0],b[1],b[2],b[3]]) || check(a,[b[6],b[7],b[0],b[1],b[2],b[3],b[4],b[5]]);
-}
-
-function getMajorColor(colArray){
-	var best = 0;
-	var num =0;
-	var bestColorValue =0;
-	for(var i=0; i<colArray.length;i++){
-		var count =0;
-		for(var j=0;j<colArray.length;j++){
-		if(colArray[i]==colArray[j]){
-		count++;
+		function check4(a, b) {
+			return check(a, [b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]) || check(a, [b[2], b[3], b[4], b[5], b[6], b[7], b[0], b[1]]) || check(a, [b[4], b[5], b[6], b[7], b[0], b[1], b[2], b[3]]) || check(a, [b[6], b[7], b[0], b[1], b[2], b[3], b[4], b[5]]);
 		}
+
+		function getMajorColor(colArray) {
+			var best = 0;
+			var num = 0;
+			var bestColorValue = 0;
+			for (var i = 0; i < colArray.length; i++) {
+				var count = 0;
+				for (var j = 0; j < colArray.length; j++) {
+					if (colArray[i] == colArray[j]) {
+						count++;
+					}
+				}
+				if (count >= num) {
+					if (count > num) {
+						best = i;
+						bestColorValue = colArray[best];
+						num = count;
+					} else if (count == num && bestColorValue < colArray[i]) {
+						best = i;
+						bestColorValue = colArray[best];
+						num = count;
+					}
+				}
+			}
+			//console.log(colArray + " ->" + colArray[best]);
+			return colArray[best];
 		}
-		if(count>=num){
-		if(count>num){
-		best = i;
-		bestColorValue=colArray[best];
-		num=count;
-		}else if(count==num  && bestColorValue<colArray[i]){
-		best = i;
-		bestColorValue=colArray[best];
-		num=count;
-		}
-		}
-	}
-	//console.log(colArray + " ->" + colArray[best]);
-	return colArray[best];
-}
 
 
-//console.log(getMajorColor([3,1,1,1,7,1,2,4,3]))
-  </script>
-  
-  
+		//console.log(getMajorColor([3,1,1,1,7,1,2,4,3]))
+	</script>
+
+
 </body>
+
 </html>
